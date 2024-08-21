@@ -2,7 +2,7 @@
 
 
 
-
+```c
 using StackExchange.Redis;
 using System;
 using System.Linq;
@@ -65,3 +65,4 @@ public static class Program
         Console.ReadKey();
     }
 }
+```
