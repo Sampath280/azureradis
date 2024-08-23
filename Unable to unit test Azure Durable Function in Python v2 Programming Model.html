@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unable to unit test Azure Durable Function in Python v2 Programming Model</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><p>The error  object NoneType can’t be used in ‘await’ expression occur  while using async method needing to be asynchronous if you’re implementing an asynchronous context manager.<br>
+<img src="https://i.imgur.com/HGrlCz4.png" alt="enter image description here"><br>
+The declaration  of  async Context Managers as below</p>
+<pre class=" language-py"><code class="prism  language-py"> <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">__aexit__</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> exc_type<span class="token punctuation">,</span> exc<span class="token punctuation">,</span> tb<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        <span class="token keyword">await</span> log<span class="token punctuation">(</span><span class="token string">'exiting context'</span><span class="token punctuation">)</span>
+</code></pre>
+<p>Refer this  <a href="https://docs.python.org/3/reference/datamodel.html#object.__aexit__">Document</a>  for  Asynchronous Context <a href="https://bugs.python.org/issue29922">Managers </a>.</p>
+<pre class=" language-py"><code class="prism  language-py">@pytest<span class="token punctuation">.</span>mark<span class="token punctuation">.</span>asyncio
+@patch<span class="token punctuation">(</span><span class="token string">'DurableFunctionsOrchestrator.function_app.df.DurableOrchestrationClient'</span><span class="token punctuation">)</span>  <span class="token keyword">async</span> <span class="token keyword">def</span> <span class="token function">test_my_func</span><span class="token punctuation">(</span>mock_durable_client<span class="token punctuation">)</span><span class="token punctuation">:</span>
+ 
+    mock_timer <span class="token operator">=</span> AsyncMock<span class="token punctuation">(</span>spec<span class="token operator">=</span>func<span class="token punctuation">.</span>TimerRequest<span class="token punctuation">)</span>
+    mock_timer<span class="token punctuation">.</span>past_due <span class="token operator">=</span> <span class="token boolean">False</span>  
+    mock_client <span class="token operator">=</span> AsyncMock<span class="token punctuation">(</span>spec<span class="token operator">=</span>df<span class="token punctuation">.</span>DurableOrchestrationClient<span class="token punctuation">)</span>
+    mock_client<span class="token punctuation">.</span>start_new <span class="token operator">=</span> AsyncMock<span class="token punctuation">(</span>return_value<span class="token operator">=</span><span class="token string">'test_instance_id'</span><span class="token punctuation">)</span>
+    mock_durable_client<span class="token punctuation">.</span>return_value <span class="token operator">=</span> mock_client
+    <span class="token keyword">await</span> my_func<span class="token punctuation">(</span>mock_timer<span class="token punctuation">,</span> mock_client<span class="token punctuation">)</span>
+    mock_client<span class="token punctuation">.</span>start_new<span class="token punctuation">.</span>assert_called_with<span class="token punctuation">(</span><span class="token string">"hello_orchestrator"</span><span class="token punctuation">)</span>
+</code></pre>
+<p>(0r)</p>
+<pre><code>from DurableFunctionsOrchestrator.function_app import my_func
+
+class MockTimerRequest:
+    pass
+
+class MockDurableOrchestrationClient:
+    def start_new(self, orchestration_name: str):
+   
+        pass
+
+@pytest.mark.asyncio
+async def test_my_func():
+    timer = MockTimerRequest()
+    client = MockDurableOrchestrationClient()
+ 
+    client.start_new = MagicMock()
+    await my_func(timer, client)
+
+    client.start_new.assert_called_with("hello_orchestrator")
+
+
+
+</code></pre>
+</div>
+</body>
+
+</html>
