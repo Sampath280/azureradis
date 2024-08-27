@@ -1,68 +1,26 @@
-# azureradis
+```Docker
+# Use the appropriate base image
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+WORKDIR /app
+EXPOSE 80
 
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+WORKDIR /src
+COPY ["Project.Api/Project.Api.csproj", "Project.Api/"]
+COPY ["Project.Business/Project.Business.csproj", "Project.Business/"]
+RUN dotnet restore "Project.Api/Project.Api.csproj"
+COPY . .
+WORKDIR "/src/Project.Api"
+RUN dotnet build "Project.Api.csproj" -c Release -o /app/build
 
+FROM build AS publish
+RUN dotnet publish "Project.Api.csproj" -c Release -o /app/publish
 
-```c
-using StackExchange.Redis;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+# Copy the XML documentation files
+COPY ["src/Project.Api/Project.Api.xml", "src/Project.Business/Project.Business.xml", "/app/publish/"]
 
-public class RedisService
-{
-    private readonly IConnectionMultiplexer _connectionMultiplexer;
-    private readonly IDatabase _redisDatabase;
-
-    public RedisService(IConnectionMultiplexer connectionMultiplexer)
-    {
-        _connectionMultiplexer = connectionMultiplexer;
-        _redisDatabase = _connectionMultiplexer.GetDatabase();
-    }
-
-    public async Task SetKeyAsync(string key, string value)
-    {
-        Console.WriteLine($"Setting key: {key} with value: {value}");
-        bool setResult = await _redisDatabase.StringSetAsync(key, value);
-        Console.WriteLine($"Set result: {setResult}");
-    }
-
-    public async Task DeleteAllKeysForProfileAsync(string profileId)
-    {
-        var endpoint = _connectionMultiplexer.GetEndPoints().First();
-        var server = _connectionMultiplexer.GetServer(endpoint);
-        var pattern = $"*{profileId}*";
-
-        // Use SCAN instead of KEYS for better performance in production environments
-        var keys = server.Keys(database: _redisDatabase.Database, pattern: pattern);
-
-        Console.WriteLine($"Found {keys.Count()} keys matching pattern '{pattern}'.");
-
-        foreach (var key in keys)
-        {
-            Console.WriteLine($"Deleting key: {key}");
-            await _redisDatabase.KeyDeleteAsync(key);
-        }
-    }
-}
-
-public static class Program
-{
-    public static async Task Main(string[] args)
-    {
-        var redisConnectionString = "your_redis_connection_string"; // Replace with your Redis connection string
-        var connectionMultiplexer = await ConnectionMultiplexer.ConnectAsync(redisConnectionString);
-        var redisService = new RedisService(connectionMultiplexer);
-
-        // Example of setting keys
-        await redisService.SetKeyAsync("user:007:profile", "User Profile Data for 007");
-        await redisService.SetKeyAsync("user:007:settings", "User Settings Data for 007");
-
-        // Example of deleting keys
-        string profileId = "007";
-        await redisService.DeleteAllKeysForProfileAsync(profileId);
-
-        Console.WriteLine("Operation completed. Press any key to exit.");
-        Console.ReadKey();
-    }
-}
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Project.Api.dll"]
 ```
